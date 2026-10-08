@@ -1,0 +1,818 @@
+<Window x:Class="Overdrive.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="OVERDRIVE — Roblox Performance Engine"
+        Width="1180" Height="740" MinWidth="1040" MinHeight="700"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        WindowStartupLocation="CenterScreen"
+        FontFamily="{DynamicResource Font.Body}"
+        UseLayoutRounding="True" SnapsToDevicePixels="True"
+        Icon="Assets/icon.ico"
+        Loaded="Window_Loaded"
+        StateChanged="Window_StateChanged">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="0" ResizeBorderThickness="8"
+                      GlassFrameThickness="0" CornerRadius="12"
+                      UseAeroCaptionButtons="False" NonClientFrameEdges="None" />
+    </WindowChrome.WindowChrome>
+
+    <Window.Resources>
+        <!-- CRT scanline texture -->
+        <DrawingBrush x:Key="Brush.Scanline" TileMode="Tile"
+                      Viewport="0,0,3,3" ViewportUnits="Absolute">
+            <DrawingBrush.Drawing>
+                <GeometryDrawing Geometry="M0,0 H3 V1 H0 Z" Brush="#07FFFFFF" />
+            </DrawingBrush.Drawing>
+        </DrawingBrush>
+
+        <Style x:Key="StatusPulse" TargetType="Ellipse">
+            <Setter Property="Opacity" Value="1" />
+            <Style.Triggers>
+                <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                             From="1" To="0.35" Duration="0:0:1.1"
+                                             AutoReverse="True" RepeatBehavior="Forever" />
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- all scrollbars in the window inherit the slim acid style -->
+        <Style TargetType="ScrollBar" BasedOn="{StaticResource Fx.ScrollBar}" />
+
+        <Style x:Key="Fx.SpecValue" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{DynamicResource Font.Display}" />
+            <Setter Property="FontSize" Value="14.5" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
+        </Style>
+
+        <Style x:Key="Fx.RowTitle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{DynamicResource Font.Display}" />
+            <Setter Property="FontSize" Value="13.5" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
+        </Style>
+
+        <Style x:Key="Fx.RowDesc" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Muted}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="MaxWidth" Value="560" />
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="12">
+        <Border CornerRadius="12" BorderBrush="#252D29" BorderThickness="1"
+                Background="{DynamicResource Brush.Bg}" ClipToBounds="True">
+            <Border.Effect>
+                <DropShadowEffect Color="#000000" Opacity="0.65" BlurRadius="34" ShadowDepth="0" />
+            </Border.Effect>
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="54" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- scanline overlay (behind everything) -->
+                <Border IsHitTestVisible="False" Background="{StaticResource Brush.Scanline}" />
+
+                <!-- ═══════════ HEADER ═══════════ -->
+                <Border Grid.Row="0" Background="{DynamicResource Brush.Bg}"
+                        BorderBrush="{DynamicResource Brush.LineSoft}" BorderThickness="0,0,0,1">
+                    <Grid x:Name="HeaderBar" MouseLeftButtonDown="Header_MouseLeftButtonDown">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- logo -->
+                        <Border Grid.Column="0" Width="30" Height="30" CornerRadius="8" Margin="20,0,0,0"
+                                Background="{DynamicResource Brush.AcidWash}"
+                                BorderBrush="#3E5A14" BorderThickness="1">
+                            <Path Data="M13 2 L4 14 h6 l-1 8 9 -12 h-6 z"
+                                  Fill="{DynamicResource Brush.Acid}" Stretch="Uniform"
+                                  Width="15" Height="15" />
+                        </Border>
+
+                        <!-- wordmark -->
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="11,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="OVERDRIVE" FontFamily="{DynamicResource Font.Display}"
+                                       FontSize="16.5" FontWeight="Bold"
+                                       Foreground="{DynamicResource Brush.Text}" VerticalAlignment="Center" />
+                            <Border Width="1" Height="14" Background="{DynamicResource Brush.Line}" Margin="11,0" />
+                            <TextBlock Text="ROBLOX PERFORMANCE ENGINE" Style="{StaticResource Fx.SectionLabel}"
+                                       VerticalAlignment="Center" />
+                            <Border CornerRadius="4" Background="{DynamicResource Brush.AcidWash}"
+                                    BorderBrush="#3E5A14" BorderThickness="1" Padding="6,2"
+                                    Margin="10,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="v1.0.0" FontFamily="{DynamicResource Font.Mono}" FontSize="9"
+                                           FontWeight="SemiBold" Foreground="{DynamicResource Brush.Acid}" />
+                            </Border>
+                        </StackPanel>
+
+                        <!-- status pill -->
+                        <Border Grid.Column="3" Background="#131A15" BorderBrush="{DynamicResource Brush.Line}"
+                                BorderThickness="1" CornerRadius="11" Padding="11,5"
+                                VerticalAlignment="Center" HorizontalAlignment="Right">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse x:Name="StatusDot" Width="7" Height="7"
+                                         Fill="{Binding StatusBrush}" VerticalAlignment="Center"
+                                         Style="{StaticResource StatusPulse}" />
+                                <TextBlock Text="{Binding StatusText}" FontFamily="{DynamicResource Font.Mono}"
+                                           FontSize="9.5" FontWeight="SemiBold"
+                                           Foreground="{Binding StatusBrush}" Margin="8,0,0,0"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- window buttons -->
+                        <StackPanel Grid.Column="4" Orientation="Horizontal" Margin="0,0,6,0" VerticalAlignment="Center">
+                            <Button Style="{StaticResource Fx.WinBtn}" Click="Min_Click" ToolTip="Minimize"
+                                    AutomationProperties.Name="Minimize">
+                                <Path Data="M0,5 H10" StrokeThickness="1.4"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                            </Button>
+                            <Button Style="{StaticResource Fx.WinBtn}" Click="Max_Click" ToolTip="Maximize"
+                                    AutomationProperties.Name="Maximize">
+                                <Path x:Name="MaxGlyph" Data="M0.5,0.5 H9.5 V9.5 H0.5 Z" StrokeThickness="1.4"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                            </Button>
+                            <Button Style="{StaticResource Fx.WinBtnClose}" Click="Close_Click" ToolTip="Close"
+                                    AutomationProperties.Name="Close">
+                                <Path Data="M0.5,0.5 L9.5,9.5 M9.5,0.5 L0.5,9.5" StrokeThickness="1.4"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- ═══════════ BODY ═══════════ -->
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="78" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- nav rail -->
+                    <Border Grid.Column="0" Background="{DynamicResource Brush.Rail}"
+                            BorderBrush="{DynamicResource Brush.LineSoft}" BorderThickness="0,0,1,0">
+                        <StackPanel Margin="0,14,0,0">
+                            <RadioButton x:Name="NavDash" Style="{StaticResource Fx.Nav}" GroupName="nav"
+                                         Tag="DASH" IsChecked="True" Checked="Nav_Checked" ToolTip="Dashboard"
+                                         AutomationProperties.Name="Dashboard">
+                                <Viewbox Width="19" Height="19">
+                                    <Path Data="M13 2 L4 14 h6 l-1 8 9 -12 h-6 z"
+                                          Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
+                                </Viewbox>
+                            </RadioButton>
+                            <RadioButton x:Name="NavTweaks" Style="{StaticResource Fx.Nav}" GroupName="nav"
+                                         Tag="TWEAKS" Checked="Nav_Checked" ToolTip="Tweaks"
+                                         AutomationProperties.Name="Tweaks">
+                                <Viewbox Width="19" Height="19">
+                                    <Canvas Width="24" Height="24">
+                                        <Path StrokeThickness="2" Data="M5 3 V21 M12 3 V21 M19 3 V21"
+                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
+                                        <Ellipse Canvas.Left="2.5" Canvas.Top="6" Width="5" Height="5"
+                                                 Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
+                                        <Ellipse Canvas.Left="9.5" Canvas.Top="13" Width="5" Height="5"
+                                                 Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
+                                        <Ellipse Canvas.Left="16.5" Canvas.Top="8" Width="5" Height="5"
+                                                 Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
+                                    </Canvas>
+                                </Viewbox>
+                            </RadioButton>
+                            <RadioButton x:Name="NavLog" Style="{StaticResource Fx.Nav}" GroupName="nav"
+                                         Tag="LOG" Checked="Nav_Checked" ToolTip="Activity log"
+                                         AutomationProperties.Name="Activity log">
+                                <Viewbox Width="19" Height="19">
+                                    <Canvas Width="24" Height="24">
+                                        <Path StrokeThickness="2" Data="M3 5 H21 V19 H3 Z"
+                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
+                                        <Path StrokeThickness="2" Data="M7 10 L10 12 L7 14"
+                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
+                                        <Path StrokeThickness="2" Data="M13 15 H17"
+                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
+                                    </Canvas>
+                                </Viewbox>
+                            </RadioButton>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- pages -->
+                    <Grid Grid.Column="1" x:Name="PagesHost">
+
+                        <!-- ═══════════ PAGE: DASHBOARD ═══════════ -->
+                        <Grid x:Name="PageDash" Margin="26,22,26,26">
+                            <Grid.RenderTransform>
+                                <TranslateTransform Y="0" />
+                            </Grid.RenderTransform>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="18" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="18" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <!-- hero -->
+                            <Border Grid.Row="0" Style="{StaticResource Fx.Hero}" Height="340">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="1" />
+                                        <ColumnDefinition Width="360" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- left: loadout + specs -->
+                                    <StackPanel Grid.Column="0" Margin="26,22,26,22">
+                                        <DockPanel>
+                                            <TextBlock Text="ACTIVE LOADOUT" Style="{StaticResource Fx.SectionLabel}"
+                                                       Foreground="{DynamicResource Brush.Acid}" />
+                                            <TextBlock Text="{Binding ProfileName}" FontFamily="{DynamicResource Font.Mono}"
+                                                       FontSize="10.5" FontWeight="Bold"
+                                                       Foreground="{DynamicResource Brush.Text}" Margin="10,0,0,0"
+                                                       VerticalAlignment="Center" />
+                                        </DockPanel>
+
+                                        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                            <RadioButton Style="{StaticResource Fx.Seg}" GroupName="profile"
+                                                         Content="PERFORMANCE" Margin="0,0,6,0"
+                                                         ToolTip="Maximum FPS — low detail, low textures, no AA"
+                                                         IsChecked="{Binding ProfileIndex, Mode=TwoWay, Converter={StaticResource Conv.IntEq}, ConverterParameter=0}" />
+                                            <RadioButton Style="{StaticResource Fx.Seg}" GroupName="profile"
+                                                         Content="BALANCED" Margin="0,0,6,0"
+                                                         ToolTip="Stock visuals + stability fixes only"
+                                                         IsChecked="{Binding ProfileIndex, Mode=TwoWay, Converter={StaticResource Conv.IntEq}, ConverterParameter=1}" />
+                                            <RadioButton Style="{StaticResource Fx.Seg}" GroupName="profile"
+                                                         Content="SMOOTH"
+                                                         ToolTip="High fidelity — high textures, 4x AA, detail kept far out"
+                                                         IsChecked="{Binding ProfileIndex, Mode=TwoWay, Converter={StaticResource Conv.IntEq}, ConverterParameter=2}" />
+                                        </StackPanel>
+
+                                        <Border Style="{StaticResource Fx.Hair}" Margin="0,16,0,0" />
+
+                                        <Grid Margin="0,14,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+
+                                            <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,12,13">
+                                                <TextBlock Text="RENDER QUALITY" Style="{StaticResource Fx.SectionLabel}" />
+                                                <TextBlock Text="{Binding SpecQuality}" Style="{StaticResource Fx.SpecValue}" Margin="0,4,0,0" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,13">
+                                                <TextBlock Text="TEXTURES" Style="{StaticResource Fx.SectionLabel}" />
+                                                <TextBlock Text="{Binding SpecTextures}" Style="{StaticResource Fx.SpecValue}" Margin="0,4,0,0" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,12,13">
+                                                <TextBlock Text="ANTI-ALIASING" Style="{StaticResource Fx.SectionLabel}" />
+                                                <TextBlock Text="{Binding SpecAA}" Style="{StaticResource Fx.SpecValue}" Margin="0,4,0,0" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,0,13">
+                                                <TextBlock Text="RENDERER" Style="{StaticResource Fx.SectionLabel}" />
+                                                <TextBlock Text="{Binding SpecRenderer}" Style="{StaticResource Fx.SpecValue}" Margin="0,4,0,0" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,12,0">
+                                                <TextBlock Text="FPS CAP" Style="{StaticResource Fx.SectionLabel}" />
+                                                <TextBlock Text="{Binding SpecFps}" Style="{StaticResource Fx.SpecValue}" Margin="0,4,0,0" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Row="2" Grid.Column="1">
+                                                <TextBlock Text="CSG LOD RANGE" Style="{StaticResource Fx.SectionLabel}" />
+                                                <TextBlock Text="{Binding SpecGeometry}" Style="{StaticResource Fx.SpecValue}" Margin="0,4,0,0" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+
+                                    <Border Grid.Column="1" Background="{DynamicResource Brush.LineSoft}" />
+
+                                    <!-- right: play -->
+                                    <Border Grid.Column="2">
+                                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="24,0">
+                                            <Button x:Name="PlayBtn" Style="{StaticResource Fx.Play}"
+                                                    Content="PLAY ROBLOX" Width="252" Height="112"
+                                                    Click="Play_Click" />
+                                            <ProgressBar Style="{StaticResource Fx.Progress}" Width="252"
+                                                         Margin="0,18,0,0"
+                                                         Visibility="{Binding IsBusy, Converter={StaticResource Conv.BoolVis}}" />
+                                            <TextBlock Text="{Binding BusyText}" FontFamily="{DynamicResource Font.Mono}"
+                                                       FontSize="9.5" Foreground="{DynamicResource Brush.Muted}"
+                                                       HorizontalAlignment="Center" TextAlignment="Center"
+                                                       TextWrapping="Wrap" MaxWidth="252" Margin="0,10,0,0" />
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+                            </Border>
+
+                            <!-- stat cards -->
+                            <Grid Grid.Row="2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" Style="{StaticResource Fx.Card}" Padding="16,13" Margin="0,0,14,0">
+                                    <StackPanel>
+                                        <DockPanel>
+                                            <Button DockPanel.Dock="Right" Content="BROWSE"
+                                                    Style="{StaticResource Fx.Btn}" Padding="9,3"
+                                                    FontSize="9.5" Click="Browse_Click" />
+                                            <TextBlock Text="INSTALL" Style="{StaticResource Fx.SectionLabel}"
+                                                       Foreground="{DynamicResource Brush.Acid}"
+                                                       VerticalAlignment="Center" />
+                                        </DockPanel>
+                                        <TextBlock Text="{Binding RobloxVersion}" FontFamily="{DynamicResource Font.Mono}"
+                                                   FontSize="13" FontWeight="Bold"
+                                                   Foreground="{DynamicResource Brush.Text}" Margin="0,9,0,0"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding RobloxPath}" FontFamily="{DynamicResource Font.Mono}"
+                                                   FontSize="9" Foreground="{DynamicResource Brush.Dim}"
+                                                   Margin="0,7,0,0" TextTrimming="CharacterEllipsis"
+                                                   ToolTip="{Binding RobloxPath}" />
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Grid.Column="1" Style="{StaticResource Fx.Card}" Padding="16,13" Margin="0,0,14,0">
+                                    <StackPanel>
+                                        <TextBlock Text="TEMP CACHE" Style="{StaticResource Fx.SectionLabel}"
+                                                   Foreground="{DynamicResource Brush.Acid}" />
+                                        <TextBlock Text="{Binding CacheSize}" FontFamily="{DynamicResource Font.Display}"
+                                                   FontSize="19" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource Brush.Text}" Margin="0,7,0,0" />
+                                        <TextBlock Text="TEMP FILES + OLD LOGS" FontFamily="{DynamicResource Font.Mono}"
+                                                   FontSize="9" Foreground="{DynamicResource Brush.Dim}" Margin="0,6,0,0" />
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Grid.Column="2" Style="{StaticResource Fx.Card}" Padding="16,13" Margin="0,0,14,0">
+                                    <StackPanel>
+                                        <TextBlock Text="FASTFLAGS" Style="{StaticResource Fx.SectionLabel}"
+                                                   Foreground="{DynamicResource Brush.Acid}" />
+                                        <TextBlock Text="{Binding FlagsCount}" FontFamily="{DynamicResource Font.Display}"
+                                                   FontSize="19" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource Brush.Acid}" Margin="0,7,0,0" />
+                                        <TextBlock Text="ALLOWLISTED OVERRIDES" FontFamily="{DynamicResource Font.Mono}"
+                                                   FontSize="9" Foreground="{DynamicResource Brush.Dim}" Margin="0,6,0,0" />
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Grid.Column="3" Style="{StaticResource Fx.Card}" Padding="16,13">
+                                    <StackPanel>
+                                        <TextBlock Text="POWER SCHEME" Style="{StaticResource Fx.SectionLabel}"
+                                                   Foreground="{DynamicResource Brush.Acid}" />
+                                        <TextBlock Text="{Binding PowerPlan}" FontFamily="{DynamicResource Font.Display}"
+                                                   FontSize="16" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource Brush.Text}" Margin="0,8,0,0"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="WINDOWS POWER PLAN" FontFamily="{DynamicResource Font.Mono}"
+                                                   FontSize="9" Foreground="{DynamicResource Brush.Dim}" Margin="0,7,0,0" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+
+                            <!-- action bar -->
+                            <Border Grid.Row="4" Style="{StaticResource Fx.Card}" Padding="18,12"
+                                    VerticalAlignment="Bottom">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center"
+                                               FontSize="11" Foreground="{DynamicResource Brush.Muted}"
+                                               Text="Every change is backed up — RESTORE STOCK puts Roblox &amp; Windows back exactly as they were." />
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <Button x:Name="OptimizeBtn" Content="OPTIMIZE NOW" Margin="0,0,10,0"
+                                                Style="{StaticResource Fx.Btn}" Click="Optimize_Click" />
+                                        <Button x:Name="CleanBtn" Content="CLEAN CACHE" Margin="0,0,10,0"
+                                                Style="{StaticResource Fx.Btn}" Click="CleanCache_Click" />
+                                        <Button x:Name="RestoreBtn" Content="RESTORE STOCK"
+                                                Style="{StaticResource Fx.BtnAcid}" Click="Restore_Click" />
+                                    </StackPanel>
+                                </DockPanel>
+                            </Border>
+                        </Grid>
+
+                        <!-- ═══════════ PAGE: TWEAKS ═══════════ -->
+                        <Grid x:Name="PageTweaks" Visibility="Collapsed">
+                            <Grid.RenderTransform>
+                                <TranslateTransform Y="0" />
+                            </Grid.RenderTransform>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <ScrollViewer Grid.Row="0"
+                                          HorizontalScrollBarVisibility="Disabled"
+                                          VerticalContentAlignment="Top">
+                                <StackPanel Margin="26,22,26,8">
+
+                                    <!-- RENDERING -->
+                                    <Border Style="{StaticResource Fx.Card}" Margin="0,0,0,16">
+                                        <StackPanel>
+                                            <TextBlock Text="RENDERING" Style="{StaticResource Fx.SectionLabel}"
+                                                       Foreground="{DynamicResource Brush.Acid}" Margin="18,15,18,2" />
+
+                                            <!-- quality level -->
+                                            <Grid Margin="18,10">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,24,0">
+                                                    <TextBlock Text="Graphics quality level" Style="{StaticResource Fx.RowTitle}" />
+                                                    <TextBlock Text="Forces Roblox's internal 1–10 quality level. 1 = potato, 10 = cinematic." Style="{StaticResource Fx.RowDesc}" Margin="0,3,0,0" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <RadioButton Style="{StaticResource Fx.SegBar}" GroupName="q" Content="1" Margin="0,0,4,0"
+                                                                 IsChecked="{Binding QualityLevel, Mode=TwoWay, Converter={StaticResource Conv.IntEq}, ConverterParameter=1}" />
+                                                    <RadioButton Style="{StaticResource Fx.SegBar}" GroupName="q" Content="2" Margin="0,0,4,0"
+                                                                 IsChecked="{Binding QualityLevel, Mode=TwoWay, Converter={StaticResource Conv.IntEq}, ConverterParameter=2}" />
+                                                    <RadioButton Style="{StaticResource Fx.SegBar}" GroupName="q" Content="3" Margin="0,0,4,0"
+                                                                 IsChecked="{Binding QualityLevel, Mode=TwoWay, Converter={StaticResource Conv.IntEq}, ConverterParameter=3}" />
+                                                    <RadioButton Style="{StaticResource Fx.SegBar}" GroupName="q" Content="4" Margin="0,0,4,0"
+                                                                 IsChecked="{Binding QualityLevel, Mode=TwoWay, Converter={StaticResource Conv.IntEq}, ConverterParameter=4}" />
+                                                    <RadioButton Style="{StaticResource Fx.SegBar}" GroupName="q" Content="5" Margin="0,0,4,0"
+                                                                 IsChecked="{Binding QualityLevel, Mode=TwoWay, Converter={StaticResource Conv.IntEq}, ConverterParameter=5}" />
+                                                    <RadioButton Style="{StaticResource Fx.SegBar}" GroupName="q" Content="6" Margin="0,0,4,0"
+                                                                 IsChecked="{Binding QualityLevel, Mode=TwoWay, Converter={StaticResource Conv.IntEq}, ConverterParameter=6}" />
+                                                    <RadioButton Style="{StaticResource Fx.SegBar}" GroupName="q" Content="7" Margin="0,0,4,0"
+                                                                 IsChecked="{Binding QualityLevel, Mode=TwoWay, Converter={StaticResource Conv.IntEq}, ConverterParameter=7}" />
+                                                    <RadioButton Style="{StaticResource Fx.SegBar}" GroupName="q" Content="8" Margin="0,0,4,0"
+                                                                 IsChecked="{Binding QualityLevel, Mode=TwoWay, Converter={StaticResource Conv.IntEq}, ConverterParameter=8}" />
+                                                    <RadioButton Style="{StaticResource Fx.SegBar}" GroupName="q" Content="9" Margin="0,0,4,0"
+                                                                 IsChecked="{Binding QualityLevel, Mode=TwoWay, Converter={StaticResource Conv.IntEq}, ConverterParameter=9}" />
+                                                    <RadioButton Style="{StaticResource Fx.SegBar}" GroupName="q" Content="10"
+                                                                 IsChecked="{Binding QualityLevel, Mode=TwoWay, Converter={StaticResource Conv.IntEq}, ConverterParameter=10}" />
+                                                </StackPanel>
+                                            </Grid>
+                                            <Border Style="{StaticResource Fx.Hair}" Margin="18,6" />
+
+                                            <!-- texture quality -->
+                                            <Grid Margin="18,10">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,24,0">
+                                                    <TextBlock Text="Texture quality override" Style="{StaticResource Fx.RowTitle}" />
+                                                    <TextBlock Text="Locks texture resolution. LOW frees VRAM, HIGH keeps surfaces crisp." Style="{StaticResource Fx.RowDesc}" Margin="0,3,0,0" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <RadioButton Style="{StaticResource Fx.Seg}" GroupName="tex" Content="OFF" Margin="0,0,5,0"
+                                                                 IsChecked="{Binding TextureQuality, Mode=TwoWay, Converter={StaticResource Conv.IntEq}, ConverterParameter=0}" />
+                                                    <RadioButton Style="{StaticResource Fx.Seg}" GroupName="tex" Content="LOW" Margin="0,0,5,0"
+                                                                 IsChecked="{Binding TextureQuality, Mode=TwoWay, Converter={StaticResource Conv.IntEq}, ConverterParameter=1}" />
+                                                    <RadioButton Style="{StaticResource Fx.Seg}" GroupName="tex" Content="MED" Margin="0,0,5,0"
+                                                                 IsChecked="{Binding TextureQuality, Mode=TwoWay, Converter={StaticResource Conv.IntEq}, ConverterParameter=2}" />
+                                                    <RadioButton Style="{StaticResource Fx.Seg}" GroupName="tex" Content="HIGH"
+                                                                 IsChecked="{Binding TextureQuality, Mode=TwoWay, Converter={StaticResource Conv.IntEq}, ConverterParameter=3}" />
+                                                </StackPanel>
+                                            </Grid>
+                                            <Border Style="{StaticResource Fx.Hair}" Margin="18,6" />
+
+                                            <!-- MSAA -->
+                                            <Grid Margin="18,10">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,24,0">
+                                                    <TextBlock Text="Anti-aliasing (MSAA)" Style="{StaticResource Fx.RowTitle}" />
+                                                    <TextBlock Text="Smooths jagged edges. Keep at 4X or below — higher breaks viewport frames." Style="{StaticResource Fx.RowDesc}" Margin="0,3,0,0" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <RadioButton Style="{StaticResource Fx.Seg}" GroupName="aa" Content="OFF" Margin="0,0,5,0"
+                                                                 IsChecked="{Binding Msaa, Mode=TwoWay, Converter={StaticResource Conv.IntEq}, ConverterParameter=0}" />
+                                                    <RadioButton Style="{StaticResource Fx.Seg}" GroupName="aa" Content="2X" Margin="0,0,5,0"
+                                                                 IsChecked="{Binding Msaa, Mode=TwoWay, Converter={StaticResource Conv.IntEq}, ConverterParameter=2}" />
+                                                    <RadioButton Style="{StaticResource Fx.Seg}" GroupName="aa" Content="4X"
+                                                                 IsChecked="{Binding Msaa, Mode=TwoWay, Converter={StaticResource Conv.IntEq}, ConverterParameter=4}" />
+                                                </StackPanel>
+                                            </Grid>
+                                            <Border Style="{StaticResource Fx.Hair}" Margin="18,6" />
+
+                                            <!-- renderer -->
+                                            <Grid Margin="18,10">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,24,0">
+                                                    <TextBlock Text="Renderer" Style="{StaticResource Fx.RowTitle}" />
+                                                    <TextBlock Text="D3D11 = safest, Vulkan = fastest on modern GPUs, OpenGL = fallback." Style="{StaticResource Fx.RowDesc}" Margin="0,3,0,0" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <RadioButton Style="{StaticResource Fx.Seg}" GroupName="api" Content="AUTO" Margin="0,0,5,0"
+                                                                 IsChecked="{Binding ApiMode, Mode=TwoWay, Converter={StaticResource Conv.IntEq}, ConverterParameter=0}" />
+                                                    <RadioButton Style="{StaticResource Fx.Seg}" GroupName="api" Content="DX11" Margin="0,0,5,0"
+                                                                 IsChecked="{Binding ApiMode, Mode=TwoWay, Converter={StaticResource Conv.IntEq}, ConverterParameter=1}" />
+                                                    <RadioButton Style="{StaticResource Fx.Seg}" GroupName="api" Content="VULKAN" Margin="0,0,5,0"
+                                                                 IsChecked="{Binding ApiMode, Mode=TwoWay, Converter={StaticResource Conv.IntEq}, ConverterParameter=2}" />
+                                                    <RadioButton Style="{StaticResource Fx.Seg}" GroupName="api" Content="GL"
+                                                                 IsChecked="{Binding ApiMode, Mode=TwoWay, Converter={StaticResource Conv.IntEq}, ConverterParameter=3}" />
+                                                </StackPanel>
+                                            </Grid>
+                                            <Border Style="{StaticResource Fx.Hair}" Margin="18,6" />
+
+                                            <!-- crisp UI -->
+                                            <Grid Margin="18,10">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,24,0">
+                                                    <TextBlock Text="Crisp UI (no DPI scale)" Style="{StaticResource Fx.RowTitle}" />
+                                                    <TextBlock Text="Razor-sharp UI text instead of OS upscaling. Looks smaller on high-DPI screens." Style="{StaticResource Fx.RowDesc}" Margin="0,3,0,0" />
+                                                </StackPanel>
+                                                <CheckBox Grid.Column="1" Style="{StaticResource Fx.Toggle}" VerticalAlignment="Center"
+                                                          IsChecked="{Binding CrispUi, Mode=TwoWay}" />
+                                            </Grid>
+                                            <Border Style="{StaticResource Fx.Hair}" Margin="18,6" />
+
+                                            <!-- alt-enter -->
+                                            <Grid Margin="18,10">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,24,0">
+                                                    <TextBlock Text="Alt+Enter fullscreen fix" Style="{StaticResource Fx.RowTitle}" />
+                                                    <TextBlock Text="Handles Alt+Enter manually — avoids Roblox's broken borderless window." Style="{StaticResource Fx.RowDesc}" Margin="0,3,0,0" />
+                                                </StackPanel>
+                                                <CheckBox Grid.Column="1" Style="{StaticResource Fx.Toggle}" VerticalAlignment="Center"
+                                                          IsChecked="{Binding AltEnterFix, Mode=TwoWay}" />
+                                            </Grid>
+                                            <Border Style="{StaticResource Fx.Hair}" Margin="18,6" />
+
+                                            <!-- grass motion -->
+                                            <Grid Margin="18,10">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,24,0">
+                                                    <TextBlock Text="Reduce grass motion" Style="{StaticResource Fx.RowTitle}" />
+                                                    <TextBlock Text="Stops wind sway on grass — tiny GPU saving, calmer visuals." Style="{StaticResource Fx.RowDesc}" Margin="0,3,0,0" />
+                                                </StackPanel>
+                                                <CheckBox Grid.Column="1" Style="{StaticResource Fx.Toggle}" VerticalAlignment="Center"
+                                                          IsChecked="{Binding GrassMotion, Mode=TwoWay}" />
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- LAUNCH -->
+                                    <Border Style="{StaticResource Fx.Card}" Margin="0,0,0,16">
+                                        <StackPanel>
+                                            <TextBlock Text="LAUNCH" Style="{StaticResource Fx.SectionLabel}"
+                                                       Foreground="{DynamicResource Brush.Acid}" Margin="18,15,18,2" />
+
+                                            <Grid Margin="18,10">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,24,0">
+                                                    <TextBlock Text="Frame rate cap" Style="{StaticResource Fx.RowTitle}" />
+                                                    <TextBlock Text="Written to Roblox's own settings file. DEF = in-game default." Style="{StaticResource Fx.RowDesc}" Margin="0,3,0,0" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <RadioButton Style="{StaticResource Fx.Seg}" GroupName="fps" Content="DEF" Margin="0,0,5,0"
+                                                                 IsChecked="{Binding FpsCapIndex, Mode=TwoWay, Converter={StaticResource Conv.IntEq}, ConverterParameter=0}" />
+                                                    <RadioButton Style="{StaticResource Fx.Seg}" GroupName="fps" Content="60" Margin="0,0,5,0"
+                                                                 IsChecked="{Binding FpsCapIndex, Mode=TwoWay, Converter={StaticResource Conv.IntEq}, ConverterParameter=1}" />
+                                                    <RadioButton Style="{StaticResource Fx.Seg}" GroupName="fps" Content="144" Margin="0,0,5,0"
+                                                                 IsChecked="{Binding FpsCapIndex, Mode=TwoWay, Converter={StaticResource Conv.IntEq}, ConverterParameter=2}" />
+                                                    <RadioButton Style="{StaticResource Fx.Seg}" GroupName="fps" Content="240" Margin="0,0,5,0"
+                                                                 IsChecked="{Binding FpsCapIndex, Mode=TwoWay, Converter={StaticResource Conv.IntEq}, ConverterParameter=3}" />
+                                                    <RadioButton Style="{StaticResource Fx.Seg}" GroupName="fps" Content="360"
+                                                                 IsChecked="{Binding FpsCapIndex, Mode=TwoWay, Converter={StaticResource Conv.IntEq}, ConverterParameter=4}" />
+                                                </StackPanel>
+                                            </Grid>
+                                            <Border Style="{StaticResource Fx.Hair}" Margin="18,6" />
+
+                                            <Grid Margin="18,10">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,24,0">
+                                                    <TextBlock Text="Launch fullscreen" Style="{StaticResource Fx.RowTitle}" />
+                                                    <TextBlock Text="Start Roblox in fullscreen mode." Style="{StaticResource Fx.RowDesc}" Margin="0,3,0,0" />
+                                                </StackPanel>
+                                                <CheckBox Grid.Column="1" Style="{StaticResource Fx.Toggle}" VerticalAlignment="Center"
+                                                          IsChecked="{Binding Fullscreen, Mode=TwoWay}" />
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- SYSTEM -->
+                                    <Border Style="{StaticResource Fx.Card}" Margin="0,0,0,16">
+                                        <StackPanel>
+                                            <TextBlock Text="SYSTEM" Style="{StaticResource Fx.SectionLabel}"
+                                                       Foreground="{DynamicResource Brush.Acid}" Margin="18,15,18,2" />
+
+                                            <Grid Margin="18,10">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,24,0">
+                                                    <TextBlock Text="High-performance power plan" Style="{StaticResource Fx.RowTitle}" />
+                                                    <TextBlock Text="Maximum CPU clock, no idle throttling. Safe and fully reversible." Style="{StaticResource Fx.RowDesc}" Margin="0,3,0,0" />
+                                                </StackPanel>
+                                                <CheckBox Grid.Column="1" Style="{StaticResource Fx.Toggle}" VerticalAlignment="Center"
+                                                          IsChecked="{Binding TwPower, Mode=TwoWay}" />
+                                            </Grid>
+                                            <Border Style="{StaticResource Fx.Hair}" Margin="18,6" />
+
+                                            <Grid Margin="18,10">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,24,0">
+                                                    <TextBlock Text="Windows Game Mode" Style="{StaticResource Fx.RowTitle}" />
+                                                    <TextBlock Text="Tells Windows this is a game — prioritizes it while you play." Style="{StaticResource Fx.RowDesc}" Margin="0,3,0,0" />
+                                                </StackPanel>
+                                                <CheckBox Grid.Column="1" Style="{StaticResource Fx.Toggle}" VerticalAlignment="Center"
+                                                          IsChecked="{Binding TwGameMode, Mode=TwoWay}" />
+                                            </Grid>
+                                            <Border Style="{StaticResource Fx.Hair}" Margin="18,6" />
+
+                                            <Grid Margin="18,10">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,24,0">
+                                                    <TextBlock Text="Xbox Game DVR capture" Style="{StaticResource Fx.RowTitle}" />
+                                                    <TextBlock Text="Off = no background recording eating your frame times." Style="{StaticResource Fx.RowDesc}" Margin="0,3,0,0" />
+                                                </StackPanel>
+                                                <CheckBox Grid.Column="1" Style="{StaticResource Fx.Toggle}" VerticalAlignment="Center"
+                                                          IsChecked="{Binding TwDvr, Mode=TwoWay}" />
+                                            </Grid>
+                                            <Border Style="{StaticResource Fx.Hair}" Margin="18,6" />
+
+                                            <Grid Margin="18,10">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,24,0">
+                                                    <TextBlock Text="High process priority" Style="{StaticResource Fx.RowTitle}" />
+                                                    <TextBlock Text="Boosts RobloxPlayerBeta to HIGH priority when it starts." Style="{StaticResource Fx.RowDesc}" Margin="0,3,0,0" />
+                                                </StackPanel>
+                                                <CheckBox Grid.Column="1" Style="{StaticResource Fx.Toggle}" VerticalAlignment="Center"
+                                                          IsChecked="{Binding TwPriority, Mode=TwoWay}" />
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- MAINTENANCE -->
+                                    <Border Style="{StaticResource Fx.Card}" Margin="0,0,0,4">
+                                        <StackPanel>
+                                            <TextBlock Text="MAINTENANCE" Style="{StaticResource Fx.SectionLabel}"
+                                                       Foreground="{DynamicResource Brush.Acid}" Margin="18,15,18,2" />
+
+                                            <Grid Margin="18,10">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,24,0">
+                                                    <TextBlock Text="Auto-clean before launch" Style="{StaticResource Fx.RowTitle}" />
+                                                    <TextBlock Text="Clears temp files + old logs right before starting Roblox." Style="{StaticResource Fx.RowDesc}" Margin="0,3,0,0" />
+                                                </StackPanel>
+                                                <CheckBox Grid.Column="1" Style="{StaticResource Fx.Toggle}" VerticalAlignment="Center"
+                                                          IsChecked="{Binding AutoClean, Mode=TwoWay}" />
+                                            </Grid>
+                                            <Border Style="{StaticResource Fx.Hair}" Margin="18,6" />
+
+                                            <Grid Margin="18,10">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,24,0">
+                                                    <TextBlock Text="Asset cache (rbx-storage)" Style="{StaticResource Fx.RowTitle}" />
+                                                    <TextBlock Text="Downloaded models &amp; textures. Clearing forces a fresh, clean copy." Style="{StaticResource Fx.RowDesc}" Margin="0,3,0,0" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding AssetSize}" FontFamily="{DynamicResource Font.Mono}"
+                                                               FontSize="11" FontWeight="Bold"
+                                                               Foreground="{DynamicResource Brush.Acid}"
+                                                               VerticalAlignment="Center" Margin="0,0,12,0" />
+                                                    <Button Content="CLEAN NOW" Padding="12,6" FontSize="10.5"
+                                                            Style="{StaticResource Fx.Btn}" Click="CleanAssets_Click" />
+                                                </StackPanel>
+                                            </Grid>
+                                            <Border Style="{StaticResource Fx.Hair}" Margin="18,6" />
+
+                                            <Grid Margin="18,10">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,24,0">
+                                                    <TextBlock Text="Download cache" Style="{StaticResource Fx.RowTitle}" />
+                                                    <TextBlock Text="Bootstrapper downloads. Roblox re-downloads them on next start." Style="{StaticResource Fx.RowDesc}" Margin="0,3,0,0" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding DownloadSize}" FontFamily="{DynamicResource Font.Mono}"
+                                                               FontSize="11" FontWeight="Bold"
+                                                               Foreground="{DynamicResource Brush.Acid}"
+                                                               VerticalAlignment="Center" Margin="0,0,12,0" />
+                                                    <Button Content="CLEAN NOW" Padding="12,6" FontSize="10.5"
+                                                            Style="{StaticResource Fx.Btn}" Click="CleanDownload_Click" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </ScrollViewer>
+
+                            <!-- footer -->
+                            <Border Grid.Row="1" Background="{DynamicResource Brush.Rail}"
+                                    BorderBrush="{DynamicResource Brush.Line}" BorderThickness="0,1,0,0"
+                                    Padding="26,13">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center"
+                                               FontFamily="{DynamicResource Font.Mono}" FontSize="9.5"
+                                               Foreground="{DynamicResource Brush.Dim}"
+                                               Text="FastFlags apply on next launch · registry + power changes are instant · everything is backed up" />
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <Button x:Name="ApplyBtn" Content="APPLY TWEAKS" Margin="0,0,10,0"
+                                                Style="{StaticResource Fx.BtnAcid}" Click="Apply_Click" />
+                                        <Button x:Name="RestoreBtn2" Content="RESTORE STOCK"
+                                                Style="{StaticResource Fx.Btn}" Click="Restore_Click" />
+                                    </StackPanel>
+                                </DockPanel>
+                            </Border>
+                        </Grid>
+
+                        <!-- ═══════════ PAGE: LOG ═══════════ -->
+                        <Grid x:Name="PageLog" Visibility="Collapsed" Margin="26,22,26,26">
+                            <Grid.RenderTransform>
+                                <TranslateTransform Y="0" />
+                            </Grid.RenderTransform>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="12" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <DockPanel Grid.Row="0">
+                                <TextBlock Text="LIVE ACTIVITY LOG" Style="{StaticResource Fx.SectionLabel}"
+                                           Foreground="{DynamicResource Brush.Acid}"
+                                           VerticalAlignment="Center" />
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <Button Content="CLEAR" Margin="0,0,10,0" Padding="12,6" FontSize="10.5"
+                                            Style="{StaticResource Fx.Btn}" Click="ClearLog_Click" />
+                                    <Button Content="COPY" Padding="12,6" FontSize="10.5"
+                                            Style="{StaticResource Fx.Btn}" Click="CopyLog_Click" />
+                                </StackPanel>
+                            </DockPanel>
+
+                            <Border Grid.Row="2" Style="{StaticResource Fx.Terminal}">
+                                <ScrollViewer x:Name="LogScroll"
+                                              HorizontalScrollBarVisibility="Disabled">
+                                    <ItemsControl x:Name="LogList" ItemsSource="{Binding Logs}" Margin="2,12">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" Margin="14,2">
+                                                    <TextBlock Text="{Binding Time}" FontFamily="{DynamicResource Font.Mono}"
+                                                               FontSize="10" Foreground="{DynamicResource Brush.Dim}"
+                                                               Width="58" />
+                                                    <TextBlock Text="{Binding Level}" FontFamily="{DynamicResource Font.Mono}"
+                                                               FontSize="10" FontWeight="Bold"
+                                                               Foreground="{Binding Color}" Width="46" />
+                                                    <TextBlock Text="{Binding Message}" FontFamily="{DynamicResource Font.Mono}"
+                                                               FontSize="11" Foreground="{DynamicResource Brush.Text}"
+                                                               TextWrapping="Wrap" MaxWidth="820" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Border>
+                        </Grid>
+                    </Grid>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
